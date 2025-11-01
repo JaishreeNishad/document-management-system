@@ -43,7 +43,7 @@ export default function OtpPage() {
       return alert("Please enter a valid 6-digit OTP!");
     }
 
-    navigate("/dashboard");
+    navigate("/search");
   };
 
   const handleResend = () => {
