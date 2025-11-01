@@ -3,22 +3,54 @@ import { useNavigate } from "react-router-dom";
 
 export default function LoginPage() {
   const [mobile, setMobile] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [page, setPage] = useState({ name: "login", mobile: "" });
   const navigate = useNavigate();
 
-  const handleSendOtp = () => {
+  // ✅ Handle OTP generation
+  const handleSendOtp = async () => {
     if (mobile.length !== 10) {
-      alert("Enter a valid 10-digit mobile number");
+      setError("Please enter a valid 10-digit mobile number.");
       return;
     }
 
-    navigate("/otp", { state: { mobile: `+91 ${mobile}` } });
+    setError(null);
+    setIsLoading(true);
+
+    const mobileNumberPayload = {
+      mobile_number: mobile,
+    };
+
+    try {
+      // 1. API Call: Generate OTP using native fetch
+      const response = await fetch(
+        "https://apis.allsoft.co/api/documentManagement/generateOTP",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(mobileNumberPayload),
+        }
+      );
+
+      const responseData = await response.json();
+      console.log("Generate OTP API Response:", responseData);
+      navigate("/otp");
+    } catch (e) {
+      console.error("Network or Fetch Error:", e);
+      setError(
+        "Could not connect to the API server. Check your network connection."
+      );
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleMobileChange = (e) => {
-    const value = e.target.value.replace(/\D/g, "");
-    if (value.length <= 10) {
-      setMobile(value);
-    }
+    const value = e.target.value.replace(/\D/g, ""); // only digits
+    if (value.length <= 10) setMobile(value);
   };
 
   return (
@@ -41,7 +73,6 @@ export default function LoginPage() {
               className="bi bi-shield-check text-primary"
               style={{ fontSize: "2.5rem" }}
             ></i>
-            {/* <span className="ms-2 fs-2 fw-bold bg-red-200">DMS</span> */}
           </div>
 
           <h2 className="fw-bold mb-2">Login</h2>
@@ -68,12 +99,15 @@ export default function LoginPage() {
             </div>
           </div>
 
+          {error && <div className="alert alert-danger py-2">{error}</div>}
+
           <button
             onClick={handleSendOtp}
+            disabled={isLoading}
             className="btn btn-primary w-100 py-2 fw-bold"
             style={{ borderRadius: "10px" }}
           >
-            Get OTP
+            {isLoading ? "Sending OTP..." : "Get OTP"}
           </button>
         </div>
       </div>
