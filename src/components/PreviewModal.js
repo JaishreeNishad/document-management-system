@@ -94,7 +94,8 @@ export default function PreviewModal({ isOpen, onClose, file }) {
           width: "90%",
           maxWidth: "700px",
           borderRadius: "10px",
-          overflow: "hidden",
+          overflow: "auto",
+          height: "80%",
         }}
         onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside modal
       >
