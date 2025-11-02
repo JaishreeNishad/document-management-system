@@ -1,5 +1,20 @@
 import React from "react";
 
+// ✅ Define TagChip here
+const TagChip = ({ tag }) => (
+  <span
+    className="badge rounded-pill text-bg-primary me-1"
+    style={{
+      backgroundColor: "#e3f2fd",
+      color: "#0d6efd",
+      fontSize: "0.75rem",
+      fontWeight: 500,
+    }}
+  >
+    {tag}
+  </span>
+);
+
 export default function PreviewModal({ isOpen, onClose, file }) {
   if (!isOpen || !file) return null;
 
@@ -23,21 +38,11 @@ export default function PreviewModal({ isOpen, onClose, file }) {
             borderRadius: "5px",
           }}
         >
-          <h5 className="text-primary mb-3">Annual Sales Report Summary</h5>
-          <div className="d-flex justify-content-around mb-3">
-            <div className="w-50 me-2 border p-2 rounded">
-              <i className="bi bi-circle-fill text-info me-2"></i>
-              <small>Data Chart 1 (Circle)</small>
-            </div>
-            <div className="w-50 border p-2 rounded">
-              <i className="bi bi-graph-up text-success me-2"></i>
-              <small>Data Chart 2 (Line)</small>
-            </div>
-          </div>
+          <h5 className="text-primary mb-3">Document Summary</h5>
           <p className="text-start" style={{ fontSize: "0.9rem" }}>
-            Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-            eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim
-            ad minim veniam. (This is placeholder content.)
+            This is a placeholder preview for the document. Actual PDF preview
+            can be implemented using <code>react-pdf</code> or similar
+            libraries.
           </p>
         </div>
       </div>
@@ -51,14 +56,12 @@ export default function PreviewModal({ isOpen, onClose, file }) {
           justifyContent: "center",
         }}
       >
-        <i
-          className="bi bi-image text-secondary"
-          style={{ fontSize: "3rem" }}
-        ></i>
-        <p className="ms-3 text-muted">Mock Image Preview Area</p>
         <img
-          src={`https://placehold.co/300x300/e0e0e0/555555?text=${file.type.toUpperCase()}`}
-          alt="Placeholder"
+          src={
+            file.file_url ||
+            `https://placehold.co/300x300/e0e0e0/555555?text=${file.type.toUpperCase()}`
+          }
+          alt="Preview"
           className="rounded"
           style={{ maxWidth: "100%", maxHeight: "100%" }}
         />
@@ -66,8 +69,12 @@ export default function PreviewModal({ isOpen, onClose, file }) {
     );
 
   const handleDownload = () => {
-    console.log(`Downloading ${file.filename}...`);
-
+    if (file.file_url) {
+      const link = document.createElement("a");
+      link.href = file.file_url;
+      link.download = file.filename;
+      link.click();
+    }
     onClose();
   };
 
@@ -82,8 +89,14 @@ export default function PreviewModal({ isOpen, onClose, file }) {
       }}
     >
       <div
-        className="card shadow-2xl p-0"
-        style={{ width: "90%", maxWidth: "650px", borderRadius: "10px" }}
+        className="card shadow-lg p-0"
+        style={{
+          width: "90%",
+          maxWidth: "700px",
+          borderRadius: "10px",
+          overflow: "hidden",
+        }}
+        onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside modal
       >
         <div className="card-header bg-white d-flex justify-content-between align-items-center p-3">
           <h5 className="mb-0 fw-bold text-dark">{file.filename}</h5>
@@ -94,7 +107,34 @@ export default function PreviewModal({ isOpen, onClose, file }) {
           ></button>
         </div>
 
-        <div className="card-body p-4">{previewContent}</div>
+        <div className="card-body p-4">
+          {/* ✅ Show document details */}
+          <div className="mb-4">
+            <p className="mb-1">
+              <strong>Category:</strong> {file.category || "N/A"}
+            </p>
+            <p className="mb-1">
+              <strong>Subcategory:</strong> {file.subCategory || "N/A"}
+            </p>
+            <p className="mb-1">
+              <strong>Date Added:</strong> {file.dateAdded || "N/A"}
+            </p>
+            <p className="mb-1">
+              <strong>Type:</strong> {file.type || "N/A"}
+            </p>
+            <p className="mb-1">
+              <strong>Tags:</strong>{" "}
+              {file.tags?.length > 0 ? (
+                file.tags.map((t) => <TagChip key={t} tag={t} />)
+              ) : (
+                <span className="text-muted">No tags</span>
+              )}
+            </p>
+          </div>
+
+          {/* ✅ File content preview */}
+          {previewContent}
+        </div>
 
         <div className="card-footer bg-light d-flex justify-content-end p-3">
           <button className="btn btn-primary me-2" onClick={handleDownload}>
