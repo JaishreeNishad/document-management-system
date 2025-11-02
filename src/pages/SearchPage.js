@@ -20,7 +20,7 @@ const TagChip = ({ tag }) => (
 );
 
 export default function SearchPage() {
-  const [category, setCategory] = useState("All");
+  const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
   const [tagsInput, setTagsInput] = useState("");
   const [availableTags, setAvailableTags] = useState([]);
@@ -76,14 +76,15 @@ export default function SearchPage() {
         : "";
 
     const payload = {
-      major_head: category === "All" ? "" : category,
-      minor_head: subCategory,
-      from_date: formatDate(fromDate),
-      to_date: formatDate(toDate),
-      tags: parsedTags.map((tag) => ({ tag_name: tag })),
-      uploaded_by: "system",
+      major_head: category,
+      minor_head: subCategory || "",
+      from_date: "",
+      to_date: toDate ? formatDate(toDate) : "",
+      tags:
+        parsedTags.length > 0 ? parsedTags.map((t) => ({ tag_name: t })) : [],
+      uploaded_by: "nitin",
       start: 0,
-      length: 50,
+      length: 10,
       filterId: "",
       search: { value: "" },
     };
@@ -227,6 +228,24 @@ export default function SearchPage() {
       ? ["HR", "IT", "Finance", "Accounts"]
       : ["All"];
 
+  const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
+  const [tagFilter, setTagFilter] = useState("");
+
+  const toggleTag = (label) => {
+    const current = parsedTags;
+    let next;
+    if (current.includes(label)) next = current.filter((t) => t !== label);
+    else next = [...current, label];
+    setTagsInput(next.join(", "));
+  };
+
+  const selectAllTags = () => {
+    const all = availableTags.map((t) => t.label);
+    setTagsInput(all.join(", "));
+  };
+
+  const clearTags = () => setTagsInput("");
+
   return (
     <div
       className="d-flex justify-content-center pt-4 pb-5"
@@ -272,36 +291,118 @@ export default function SearchPage() {
 
           <div className="col-md-3">
             <label className="form-label text-muted">Tags</label>
-            <select
-              multiple
-              className="form-select"
-              value={tagsInput
-                .split(",")
-                .map((t) => t.trim())
-                .filter((t) => t)}
-              onChange={(e) => {
-                const selectedTags = Array.from(
-                  e.target.selectedOptions,
-                  (opt) => opt.value
-                );
-                setTagsInput(selectedTags.join(", "));
-              }}
-            >
-              {availableTags.length > 0 ? (
-                availableTags.map((tagObj) => (
-                  <option key={tagObj.id} value={tagObj.label}>
-                    {tagObj.label}
-                  </option>
-                ))
-              ) : (
-                <option disabled>Loading tags...</option>
-              )}
-            </select>
 
-            <div className="mt-1">
-              {parsedTags.map((tag) => (
-                <TagChip key={tag} tag={tag} />
-              ))}
+            {/* Multiselect dropdown */}
+            <div className="position-relative">
+              <button
+                type="button"
+                className="form-control text-start d-flex justify-content-between align-items-center"
+                onClick={() => setTagDropdownOpen((s) => !s)}
+                style={{
+                  minHeight: "42px",
+                  maxHeight: "42px",
+                  padding: "6px 12px",
+                  overflow: "hidden",
+                }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    overflowX: "auto",
+                    whiteSpace: "nowrap",
+                    alignItems: "center",
+                    flex: "1 1 auto",
+                  }}
+                >
+                  {parsedTags.length === 0 ? (
+                    <span className="text-muted">Select tags...</span>
+                  ) : (
+                    parsedTags.map((tag) => (
+                      <span
+                        key={tag}
+                        style={{ display: "inline-block", marginRight: 6 }}
+                      >
+                        <TagChip tag={tag} />
+                      </span>
+                    ))
+                  )}
+                </div>
+                <i
+                  className={`bi ${
+                    tagDropdownOpen ? "bi-caret-up-fill" : "bi-caret-down-fill"
+                  }`}
+                  style={{ flex: "0 0 auto", marginLeft: 8 }}
+                ></i>
+              </button>
+
+              {tagDropdownOpen && (
+                <div
+                  className="card position-absolute mt-1 p-2"
+                  style={{
+                    zIndex: 2000,
+                    width: "100%",
+                    maxHeight: "220px",
+                    overflow: "auto",
+                  }}
+                >
+                  <div className="mb-2">
+                    <input
+                      className="form-control form-control-sm"
+                      placeholder="Search tags..."
+                      value={tagFilter}
+                      onChange={(e) => setTagFilter(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="d-flex justify-content-between mb-2">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-link p-0"
+                      onClick={selectAllTags}
+                    >
+                      Select all
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-link p-0"
+                      onClick={clearTags}
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  <div>
+                    {availableTags.length > 0 ? (
+                      availableTags
+                        .filter((t) =>
+                          t.label
+                            .toLowerCase()
+                            .includes(tagFilter.toLowerCase())
+                        )
+                        .map((tagObj) => (
+                          <label
+                            key={tagObj.id}
+                            className="form-check d-flex align-items-center w-100 mb-1"
+                            style={{ cursor: "pointer" }}
+                          >
+                            <input
+                              className="form-check-input me-2"
+                              type="checkbox"
+                              checked={parsedTags.includes(tagObj.label)}
+                              onChange={() => toggleTag(tagObj.label)}
+                            />
+                            <span className="form-check-label">
+                              {tagObj.label}
+                            </span>
+                          </label>
+                        ))
+                    ) : (
+                      <div className="text-muted">Loading tags...</div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
