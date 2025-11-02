@@ -4,6 +4,7 @@ import "react-datepicker/dist/react-datepicker.css";
 import { Link } from "react-router-dom";
 import PreviewModal from "../components/PreviewModal";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const TagChip = ({ tag }) => (
   <span
@@ -20,6 +21,7 @@ const TagChip = ({ tag }) => (
 );
 
 export default function SearchPage() {
+  const { token } = useAuth();
   const [category, setCategory] = useState("");
   const [subCategory, setSubCategory] = useState("");
   const [tagsInput, setTagsInput] = useState("");
@@ -57,7 +59,6 @@ export default function SearchPage() {
       return;
     }
 
-    const token = localStorage.getItem("authToken");
     if (!token) {
       setError("Session expired! Please login again.");
       navigate("/");
@@ -148,7 +149,6 @@ export default function SearchPage() {
   // Fetch available tags
   useEffect(() => {
     const fetchTags = async () => {
-      const token = localStorage.getItem("authToken");
       if (!token) return;
 
       try {

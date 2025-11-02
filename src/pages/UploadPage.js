@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 const TagChip = ({ tag, onDelete }) => (
   <span
@@ -24,6 +25,7 @@ const TagChip = ({ tag, onDelete }) => (
 );
 
 export default function UploadPage() {
+  const { token } = useAuth();
   const navigate = useNavigate();
 
   const [date, setDate] = useState(new Date());
@@ -50,7 +52,7 @@ export default function UploadPage() {
   // 🔹 Fetch available document tags from API
   useEffect(() => {
     const fetchTags = async () => {
-      const token = localStorage.getItem("authToken");
+      console.log("Fetching tags with token:", token);
       if (!token) return;
 
       try {
