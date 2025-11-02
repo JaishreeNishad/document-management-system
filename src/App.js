@@ -4,7 +4,7 @@ import { useAuth } from "./context/AuthContext.js";
 import Navbar from "./components/Layout/Navbar";
 import LoginPage from "./pages/LoginPage";
 import OtpPage from "./pages/OtpPage";
-// import UploadPage from "./pages/UploadPage";
+
 import SearchPage from "./pages/SearchPage";
 import AdminUserForm from "./components/Auth/AdminUserForm";
 import { Navigate, Route, Routes } from "react-router-dom";
@@ -21,18 +21,15 @@ function App() {
         <Route path="/otp" element={<OtpPage />} />
         <Route
           path="/upload"
-          // element={token ? <UploadPage /> : <Navigate to="/" />}
-          element={<UploadPage />}
+          element={token ? <UploadPage /> : <Navigate to="/" />}
         />
         <Route
           path="/search"
-          // element={token ? <SearchPage /> : <Navigate to="/" />}
-          element={<SearchPage />}
+          element={token ? <SearchPage /> : <Navigate to="/" />}
         />
         <Route
           path="/admin"
-          // element={token ? <AdminUserForm /> : <Navigate to="/" />}
-          element={<AdminUserForm />}
+          element={token ? <AdminUserForm /> : <Navigate to="/" />}
         />
       </Routes>
     </>
