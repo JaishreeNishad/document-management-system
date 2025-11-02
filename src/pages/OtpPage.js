@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
 
 export default function OtpPage() {
   const [otp, setOtp] = useState(new Array(6).fill(""));
@@ -10,9 +11,10 @@ export default function OtpPage() {
   const inputsRef = useRef([]);
   const navigate = useNavigate();
   const location = useLocation();
+  const { login } = useAuth();
 
   // ✅ The mobile number passed from previous page
-  const mobileNumber = location.state?.mobile || "+916263841606";
+  const mobileNumber = location.state?.mobile;
 
   useEffect(() => {
     if (timer === 0) return;
@@ -74,7 +76,7 @@ export default function OtpPage() {
       // ✅ Only navigate if OTP is valid
       if (response.ok && responseData.status === true) {
         const token = responseData.data?.token; // ✅ extract token
-        localStorage.setItem("authToken", token); // ✅ store it
+        login(token); // ✅ set the token using useAuth
         alert("✅ OTP verified successfully!");
         navigate("/upload");
       } else {

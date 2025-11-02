@@ -37,7 +37,7 @@ export default function LoginPage() {
 
       const responseData = await response.json();
       console.log("Generate OTP API Response:", responseData);
-      navigate("/otp");
+      navigate("/otp", { state: { mobile } });
     } catch (e) {
       console.error("Network or Fetch Error:", e);
       setError(
