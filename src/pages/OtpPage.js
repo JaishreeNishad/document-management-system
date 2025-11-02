@@ -78,7 +78,7 @@ export default function OtpPage() {
         const token = responseData.data?.token; // ✅ extract token
         login(token); // ✅ set the token using useAuth
         alert("✅ OTP verified successfully!");
-        navigate("/search");
+        navigate("/search", { state: { data: responseData.data } });
       } else {
         // ❌ Show error if invalid OTP or API error
         setError(responseData.message || "Invalid OTP. Please try again.");

@@ -4,23 +4,17 @@ import "react-datepicker/dist/react-datepicker.css";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const TagChip = ({ tag, onDelete }) => (
+const TagChip = ({ tag }) => (
   <span
-    className="badge rounded-pill text-bg-primary me-2 d-flex align-items-center"
+    className="badge rounded-pill me-1"
     style={{
-      backgroundColor: "#0d6efd",
-      color: "#fff",
-      fontSize: "0.85rem",
-      padding: "0.4rem 0.6rem",
-      cursor: "pointer",
+      backgroundColor: "#e3f2fd",
+      color: "#0d6efd",
+      fontSize: "0.75rem",
+      fontWeight: 500,
     }}
   >
     {tag}
-    <i
-      className="bi bi-x-circle-fill ms-2"
-      onClick={onDelete}
-      style={{ fontSize: "0.75rem", cursor: "pointer" }}
-    ></i>
   </span>
 );
 
@@ -31,7 +25,7 @@ export default function UploadPage() {
   const [date, setDate] = useState(new Date());
   const [category, setCategory] = useState("");
   const [minor, setMinor] = useState("");
-  const [tags, setTags] = useState([]); // selected tags
+  const [tagsInput, setTagsInput] = useState(""); // comma separated tags
   const [availableTags, setAvailableTags] = useState([]); // API tags
   const [remarks, setRemarks] = useState("");
   const [file, setFile] = useState(null);
@@ -40,14 +34,19 @@ export default function UploadPage() {
   const [error, setError] = useState(null);
   const [uploadedDocs, setUploadedDocs] = useState([]);
 
-  // 🔍 Search Filter Section
-  const [showFilters, setShowFilters] = useState(false);
-  const [searchTag, setSearchTag] = useState("");
-  const [searchCategory, setSearchCategory] = useState("");
-  const [searchDate, setSearchDate] = useState(null);
+  // Tag dropdown state (SearchPage जैसा)
+  const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
+  const [tagFilter, setTagFilter] = useState("");
 
-  const names = ["John", "Tom", "Emily"];
-  const departments = ["Accounts", "HR", "IT", "Finance"];
+  // Parse comma separated tags
+  const parsedTags = React.useMemo(() => {
+    return tagsInput
+      ? tagsInput
+          .split(",")
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0)
+      : [];
+  }, [tagsInput]);
 
   // 🔹 Fetch available document tags from API
   useEffect(() => {
@@ -75,7 +74,6 @@ export default function UploadPage() {
           result.status === true &&
           Array.isArray(result.data)
         ) {
-          // ✅ Correct mapping for {id, label} API response
           const formatted = result.data
             .filter((tag) => tag.label && tag.label.trim() !== "")
             .map((tag) => ({
@@ -92,11 +90,22 @@ export default function UploadPage() {
     };
 
     fetchTags();
-  }, []);
+  }, [token]);
 
-  const handleTagDelete = (tagToDelete) => {
-    setTags(tags.filter((tag) => tag !== tagToDelete));
+  // Tag selection functions (SearchPage जैसा)
+  const toggleTag = (label) => {
+    const current = parsedTags;
+    const next = current.includes(label)
+      ? current.filter((t) => t !== label)
+      : [...current, label];
+    setTagsInput(next.join(", "));
   };
+
+  const selectAllTags = () => {
+    setTagsInput(availableTags.map((t) => t.label).join(", "));
+  };
+
+  const clearTags = () => setTagsInput("");
 
   const handleFileChange = (e) => {
     const uploadedFile = e.target.files[0];
@@ -148,7 +157,6 @@ export default function UploadPage() {
       return;
     }
 
-    const token = localStorage.getItem("authToken");
     if (!token) {
       setError("Session expired! Please login again.");
       navigate("/");
@@ -171,7 +179,8 @@ export default function UploadPage() {
             ).padStart(2, "0")}-${date.getFullYear()}`
           : "",
         document_remarks: remarks,
-        tags: tags.map((t) => ({ tag_name: t })),
+        tags:
+          parsedTags.length > 0 ? parsedTags.map((t) => ({ tag_name: t })) : [],
         user_id: "nitin",
       };
 
@@ -199,14 +208,14 @@ export default function UploadPage() {
           category: category || "General",
           minor: minor || "Misc",
           dateAdded: dataPayload.document_date,
-          tags: tags.map((t) => ({ tag_name: t })),
+          tags: parsedTags.map((t) => ({ tag_name: t })),
           file_url: result.data?.file_url || "",
         };
 
         setUploadedDocs([newDoc, ...uploadedDocs]);
         setFile(null);
         setRemarks("");
-        setTags([]);
+        setTagsInput("");
       } else {
         setError(result.message || "Failed to upload document.");
       }
@@ -216,79 +225,6 @@ export default function UploadPage() {
     } finally {
       setIsLoading(false);
     }
-  };
-
-  // 🔎 SEARCH DOCUMENTS
-  const handleSearch = async () => {
-    if (!showFilters) {
-      setShowFilters(true);
-      return;
-    }
-
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      setError("Session expired! Please login again.");
-      navigate("/");
-      return;
-    }
-
-    setIsLoading(true);
-    setError(null);
-
-    const payload = {
-      major_head: searchCategory,
-      minor_head: "",
-      from_date: searchDate
-        ? `${String(searchDate.getDate()).padStart(2, "0")}-${String(
-            searchDate.getMonth() + 1
-          ).padStart(2, "0")}-${searchDate.getFullYear()}`
-        : "",
-      to_date: "",
-      tags:
-        searchTag.trim() !== ""
-          ? [{ tag_name: searchTag }]
-          : tags.map((t) => ({ tag_name: t })),
-      uploaded_by: "nitin",
-      start: 0,
-      length: 10,
-      filterId: "",
-      search: { value: "" },
-    };
-
-    try {
-      const response = await fetch(
-        "https://apis.allsoft.co/api/documentManagement/searchDocumentEntry",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            token: token,
-          },
-          body: JSON.stringify(payload),
-        }
-      );
-
-      const result = await response.json();
-
-      if (response.ok && result.status === true && Array.isArray(result.data)) {
-        setUploadedDocs(result.data);
-      } else {
-        setUploadedDocs([]);
-        setError(result.message || "No documents found.");
-      }
-    } catch (err) {
-      console.error("Search Error:", err);
-      setError("Network error while searching documents.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleClearFilters = () => {
-    setSearchTag("");
-    setSearchCategory("");
-    setSearchDate(null);
-    setUploadedDocs([]);
   };
 
   return (
@@ -317,16 +253,6 @@ export default function UploadPage() {
         <form onSubmit={handleSubmit}>
           {/* ---Date / Category / Minor--- */}
           <div className="row g-3 mb-4">
-            <div className="col-md-2">
-              <label className="form-label text-muted">Document Date</label>
-              <DatePicker
-                selected={date}
-                onChange={(d) => setDate(d)}
-                className="form-control w-100"
-                dateFormat="MM/dd/yyyy"
-              />
-            </div>
-
             <div className="col-md-4">
               <label className="form-label text-muted">Category</label>
               <select
@@ -354,46 +280,115 @@ export default function UploadPage() {
                 disabled={!category}
               >
                 <option value="">Select</option>
-                {(category === "Personal" ? names : departments).map((item) => (
-                  <option key={item} value={item}>
-                    {item}
-                  </option>
-                ))}
+                {category === "Personal"
+                  ? ["John", "Tom", "Emily"].map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))
+                  : ["Accounts", "HR", "IT", "Finance"].map((item) => (
+                      <option key={item} value={item}>
+                        {item}
+                      </option>
+                    ))}
               </select>
+            </div>
+            <div className="col-md-2">
+              <label className="form-label text-muted">Document Date</label>
+              <DatePicker
+                selected={date}
+                onChange={(d) => setDate(d)}
+                className="form-control w-100"
+                dateFormat="MM/dd/yyyy"
+              />
             </div>
           </div>
 
+          {/* ---TAGS DROPDOWN (SearchPage जैसा)--- */}
           <div className="mb-4">
             <label className="form-label text-muted">Tags</label>
-            <select
-              multiple
-              className="form-select"
-              value={tags}
-              onChange={(e) =>
-                setTags(
-                  Array.from(e.target.selectedOptions, (opt) => opt.value)
-                )
-              }
-            >
-              {availableTags.length > 0 ? (
-                availableTags.map((tagObj) => (
-                  <option key={tagObj.id} value={tagObj.label}>
-                    {tagObj.label}
-                  </option>
-                ))
-              ) : (
-                <option disabled>Loading tags...</option>
-              )}
-            </select>
+            <div className="position-relative">
+              <button
+                type="button"
+                className="form-control text-start d-flex justify-content-between align-items-center"
+                onClick={() => setTagDropdownOpen((s) => !s)}
+                style={{ minHeight: "38px" }}
+              >
+                <div
+                  style={{
+                    display: "flex",
+                    gap: 6,
+                    overflowX: "auto",
+                    whiteSpace: "nowrap",
+                    flex: "1 1 auto",
+                  }}
+                >
+                  {parsedTags.length === 0 ? (
+                    <span className="text-muted">Select tags...</span>
+                  ) : (
+                    parsedTags.map((tag) => <TagChip key={tag} tag={tag} />)
+                  )}
+                </div>
+                <i
+                  className={`bi ${
+                    tagDropdownOpen ? "bi-caret-up-fill" : "bi-caret-down-fill"
+                  }`}
+                ></i>
+              </button>
 
-            <div className="d-flex flex-wrap align-items-center my-2">
-              {tags.map((tag) => (
-                <TagChip
-                  key={tag}
-                  tag={tag}
-                  onDelete={() => handleTagDelete(tag)}
-                />
-              ))}
+              {tagDropdownOpen && (
+                <div
+                  className="card position-absolute mt-1 p-2"
+                  style={{
+                    zIndex: 2000,
+                    width: "100%",
+                    maxHeight: "220px",
+                    overflow: "auto",
+                  }}
+                >
+                  <input
+                    className="form-control form-control-sm mb-2"
+                    placeholder="Search tags..."
+                    value={tagFilter}
+                    onChange={(e) => setTagFilter(e.target.value)}
+                  />
+                  <div className="d-flex justify-content-between mb-2">
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-link p-0"
+                      onClick={selectAllTags}
+                    >
+                      Select all
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-sm btn-link p-0"
+                      onClick={clearTags}
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  {availableTags
+                    .filter((t) =>
+                      t.label.toLowerCase().includes(tagFilter.toLowerCase())
+                    )
+                    .map((tag) => (
+                      <label
+                        key={tag.id}
+                        className="form-check d-flex align-items-center mb-1"
+                        style={{ cursor: "pointer" }}
+                      >
+                        <input
+                          type="checkbox"
+                          className="form-check-input me-2"
+                          checked={parsedTags.includes(tag.label)}
+                          onChange={() => toggleTag(tag.label)}
+                        />
+                        <span>{tag.label}</span>
+                      </label>
+                    ))}
+                </div>
+              )}
             </div>
           </div>
 
