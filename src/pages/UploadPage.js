@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Link, useNavigate } from "react-router-dom";
@@ -29,38 +29,98 @@ export default function UploadPage() {
   const [date, setDate] = useState(new Date());
   const [category, setCategory] = useState("");
   const [minor, setMinor] = useState("");
-  const [tags, setTags] = useState(["invoice", "report"]);
-  const [currentTag, setCurrentTag] = useState("");
+  const [tags, setTags] = useState([]); // selected tags
+  const [availableTags, setAvailableTags] = useState([]); // API tags
   const [remarks, setRemarks] = useState("");
   const [file, setFile] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const [uploadedDocs, setUploadedDocs] = useState([]);
+
+  // 🔍 Search Filter Section
+  const [showFilters, setShowFilters] = useState(false);
+  const [searchTag, setSearchTag] = useState("");
+  const [searchCategory, setSearchCategory] = useState("");
+  const [searchDate, setSearchDate] = useState(null);
 
   const names = ["John", "Tom", "Emily"];
   const departments = ["Accounts", "HR", "IT", "Finance"];
 
-  const handleTagAdd = (e) => {
-    if (e.key === "Enter" && currentTag.trim() !== "") {
-      e.preventDefault();
-      const newTag = currentTag.trim();
-      if (!tags.includes(newTag)) {
-        setTags([...tags, newTag]);
+  // 🔹 Fetch available document tags from API
+  useEffect(() => {
+    const fetchTags = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) return;
+
+      try {
+        const response = await fetch(
+          "https://apis.allsoft.co/api/documentManagement/documentTags",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              token: token,
+            },
+            body: JSON.stringify({ term: "" }),
+          }
+        );
+
+        const result = await response.json();
+
+        if (
+          response.ok &&
+          result.status === true &&
+          Array.isArray(result.data)
+        ) {
+          // ✅ Correct mapping for {id, label} API response
+          const formatted = result.data
+            .filter((tag) => tag.label && tag.label.trim() !== "")
+            .map((tag) => ({
+              id: tag.id,
+              label: tag.label,
+            }));
+          setAvailableTags(formatted);
+        } else {
+          setAvailableTags([]);
+        }
+      } catch (err) {
+        console.error("Tag fetch error:", err);
       }
-      setCurrentTag("");
-    }
-  };
+    };
+
+    fetchTags();
+  }, []);
 
   const handleTagDelete = (tagToDelete) => {
     setTags(tags.filter((tag) => tag !== tagToDelete));
+  };
+
+  const handleFileChange = (e) => {
+    const uploadedFile = e.target.files[0];
+    if (
+      uploadedFile &&
+      (uploadedFile.type.startsWith("image/") ||
+        uploadedFile.type === "application/pdf")
+    ) {
+      setFile(uploadedFile);
+      setError(null);
+    } else {
+      setError("Only Image and PDF files are allowed!");
+      setFile(null);
+    }
   };
 
   const handleDragOver = (e) => {
     e.preventDefault();
     setIsDragOver(true);
   };
+
   const handleDragLeave = (e) => {
     e.preventDefault();
     setIsDragOver(false);
   };
+
   const handleDrop = (e) => {
     e.preventDefault();
     setIsDragOver(false);
@@ -71,53 +131,162 @@ export default function UploadPage() {
         uploadedFile.type === "application/pdf")
     ) {
       setFile(uploadedFile);
+      setError(null);
     } else {
-      console.error("Only Image and PDF files are allowed!");
-    }
-  };
-  const handleFileChange = (e) => {
-    const uploadedFile = e.target.files[0];
-    if (
-      uploadedFile &&
-      (uploadedFile.type.startsWith("image/") ||
-        uploadedFile.type === "application/pdf")
-    ) {
-      setFile(uploadedFile);
-    } else {
-      console.error("Only Image and PDF files are allowed!");
-      setFile(null);
+      setError("Only Image and PDF files are allowed!");
     }
   };
 
-  const handleSubmit = (e) => {
+  // 🔹UPLOAD FILE
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!file) {
-      console.error("Validation Error: Please upload a file!");
+      setError("Please upload a file before submitting!");
       return;
     }
 
-    const formData = {
-      date: date.toISOString().split("T")[0],
-      major_head: category,
-      minor_head: minor,
-      tags: tags,
-      remarks: remarks,
-      file: file.name,
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setError("Session expired! Please login again.");
+      navigate("/");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const dataPayload = {
+        major_head: category || "General",
+        minor_head: minor || "Misc",
+        document_date: date
+          ? `${String(date.getDate()).padStart(2, "0")}-${String(
+              date.getMonth() + 1
+            ).padStart(2, "0")}-${date.getFullYear()}`
+          : "",
+        document_remarks: remarks,
+        tags: tags.map((t) => ({ tag_name: t })),
+        user_id: "nitin",
+      };
+
+      formData.append("data", JSON.stringify(dataPayload));
+
+      const response = await fetch(
+        "https://apis.allsoft.co/api/documentManagement/saveDocumentEntry",
+        {
+          method: "POST",
+          headers: {
+            token: token,
+          },
+          body: formData,
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok && result.status === true) {
+        alert("✅ File uploaded successfully!");
+
+        const newDoc = {
+          id: result.data?.id || Date.now(),
+          filename: file.name,
+          category: category || "General",
+          minor: minor || "Misc",
+          dateAdded: dataPayload.document_date,
+          tags: tags.map((t) => ({ tag_name: t })),
+          file_url: result.data?.file_url || "",
+        };
+
+        setUploadedDocs([newDoc, ...uploadedDocs]);
+        setFile(null);
+        setRemarks("");
+        setTags([]);
+      } else {
+        setError(result.message || "Failed to upload document.");
+      }
+    } catch (err) {
+      console.error("Upload Error:", err);
+      setError("Network error: Unable to upload file.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // 🔎 SEARCH DOCUMENTS
+  const handleSearch = async () => {
+    if (!showFilters) {
+      setShowFilters(true);
+      return;
+    }
+
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setError("Session expired! Please login again.");
+      navigate("/");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    const payload = {
+      major_head: searchCategory,
+      minor_head: "",
+      from_date: searchDate
+        ? `${String(searchDate.getDate()).padStart(2, "0")}-${String(
+            searchDate.getMonth() + 1
+          ).padStart(2, "0")}-${searchDate.getFullYear()}`
+        : "",
+      to_date: "",
+      tags:
+        searchTag.trim() !== ""
+          ? [{ tag_name: searchTag }]
+          : tags.map((t) => ({ tag_name: t })),
+      uploaded_by: "nitin",
+      start: 0,
+      length: 10,
+      filterId: "",
+      search: { value: "" },
     };
 
-    console.log("Submitting Document:", formData);
-    console.log(
-      `File (${file.name}) Uploaded Successfully! Navigating to search.`
-    );
+    try {
+      const response = await fetch(
+        "https://apis.allsoft.co/api/documentManagement/searchDocumentEntry",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: token,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
-    navigate("/search");
+      const result = await response.json();
 
-    setDate(new Date());
-    setCategory("");
-    setMinor("");
-    setTags([]);
-    setRemarks("");
-    setFile(null);
+      if (response.ok && result.status === true && Array.isArray(result.data)) {
+        setUploadedDocs(result.data);
+      } else {
+        setUploadedDocs([]);
+        setError(result.message || "No documents found.");
+      }
+    } catch (err) {
+      console.error("Search Error:", err);
+      setError("Network error while searching documents.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClearFilters = () => {
+    setSearchTag("");
+    setSearchCategory("");
+    setSearchDate(null);
+    setUploadedDocs([]);
   };
 
   return (
@@ -132,7 +301,9 @@ export default function UploadPage() {
         <h2 className="fw-bold mb-4" style={{ color: "#343a40" }}>
           Upload New Document
         </h2>
+
         <form onSubmit={handleSubmit}>
+          {/* ---Date / Category / Minor--- */}
           <div className="row g-3 mb-4">
             <div className="col-md-4">
               <label className="form-label text-muted">Document Date</label>
@@ -180,17 +351,31 @@ export default function UploadPage() {
             </div>
           </div>
 
+          {/* ---Tags Dropdown--- */}
+          {/* ---Tags Dropdown--- */}
           <div className="mb-4">
             <label className="form-label text-muted">Tags</label>
+            <select
+              multiple
+              className="form-select"
+              value={tags}
+              onChange={(e) =>
+                setTags(
+                  Array.from(e.target.selectedOptions, (opt) => opt.value)
+                )
+              }
+            >
+              {availableTags.length > 0 ? (
+                availableTags.map((tagObj) => (
+                  <option key={tagObj.id} value={tagObj.label}>
+                    {tagObj.label}
+                  </option>
+                ))
+              ) : (
+                <option disabled>Loading tags...</option>
+              )}
+            </select>
 
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Enter new tags (press Enter to add)"
-              value={currentTag}
-              onChange={(e) => setCurrentTag(e.target.value)}
-              onKeyDown={handleTagAdd}
-            />
             <div className="d-flex flex-wrap align-items-center my-2">
               {tags.map((tag) => (
                 <TagChip
@@ -202,6 +387,7 @@ export default function UploadPage() {
             </div>
           </div>
 
+          {/* ---Remarks--- */}
           <div className="mb-4">
             <label className="form-label text-muted">Remarks</label>
             <textarea
@@ -212,6 +398,7 @@ export default function UploadPage() {
             />
           </div>
 
+          {/* ---File Upload--- */}
           <div className="mb-4">
             <label className="form-label text-muted">
               File Upload (Image/PDF only)
@@ -267,17 +454,133 @@ export default function UploadPage() {
             )}
           </div>
 
+          {error && <div className="alert alert-danger">{error}</div>}
+
           <div className="d-flex justify-content-end mt-4">
             <Link to="/search">
               <button type="button" className="btn btn-outline-secondary me-2">
                 Cancel
               </button>
             </Link>
-            <button type="submit" className="btn btn-primary">
-              Upload Document
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={isLoading}
+            >
+              {isLoading ? "Uploading..." : "Upload Document"}
             </button>
           </div>
         </form>
+
+        {/* 🔍 SEARCH SECTION */}
+        <div className="text-end mt-4">
+          <button
+            type="button"
+            className="btn btn-success"
+            onClick={handleSearch}
+            disabled={isLoading}
+          >
+            {isLoading ? "Searching..." : showFilters ? "Run Search" : "Search"}
+          </button>
+        </div>
+
+        {/* 📦 Filters */}
+        {showFilters && (
+          <div className="card p-3 mt-3 shadow-sm">
+            <div className="row g-3 align-items-end">
+              <div className="col-md-4">
+                <label className="form-label text-muted">Tag</label>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Enter tag"
+                  value={searchTag}
+                  onChange={(e) => setSearchTag(e.target.value)}
+                />
+              </div>
+              <div className="col-md-4">
+                <label className="form-label text-muted">Category</label>
+                <select
+                  className="form-select"
+                  value={searchCategory}
+                  onChange={(e) => setSearchCategory(e.target.value)}
+                >
+                  <option value="">Select</option>
+                  <option value="Personal">Personal</option>
+                  <option value="Professional">Professional</option>
+                </select>
+              </div>
+              <div className="col-md-4">
+                <label className="form-label text-muted">Date</label>
+                <DatePicker
+                  selected={searchDate}
+                  onChange={(d) => setSearchDate(d)}
+                  className="form-control"
+                  dateFormat="dd/MM/yyyy"
+                />
+              </div>
+            </div>
+            <div className="text-end mt-3">
+              <button
+                type="button"
+                className="btn btn-outline-secondary"
+                onClick={handleClearFilters}
+              >
+                Clear
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* 📄 Uploaded Documents */}
+        {uploadedDocs.length > 0 && (
+          <div className="mt-5">
+            <h4>Uploaded Documents</h4>
+            <table className="table table-bordered mt-3">
+              <thead className="table-light">
+                <tr>
+                  <th>#</th>
+                  <th>Filename</th>
+                  <th>Category</th>
+                  <th>Minor</th>
+                  <th>Date</th>
+                  <th>Tags</th>
+                  <th>Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {uploadedDocs.map((doc, index) => (
+                  <tr key={doc.id || index}>
+                    <td>{index + 1}</td>
+                    <td>{doc.file_name || doc.filename}</td>
+                    <td>{doc.major_head || doc.category}</td>
+                    <td>{doc.minor_head || doc.minor}</td>
+                    <td>{doc.document_date || doc.dateAdded}</td>
+                    <td>
+                      {doc.tags
+                        ? doc.tags.map((t) => t.tag_name).join(", ")
+                        : "-"}
+                    </td>
+                    <td>
+                      {doc.file_url ? (
+                        <a
+                          href={doc.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="btn btn-sm btn-outline-primary"
+                        >
+                          View
+                        </a>
+                      ) : (
+                        "-"
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </div>
   );

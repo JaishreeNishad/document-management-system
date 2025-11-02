@@ -3,49 +3,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Link } from "react-router-dom";
 import PreviewModal from "../components/PreviewModal";
-
-const MOCK_SEARCH_RESULTS = [
-  {
-    id: 1,
-    filename: "Q3-Report.pdf",
-    icon: "bi-file-earmark-pdf",
-    category: "Professional",
-    subCategory: "HR",
-    dateAdded: "2025-10-20",
-    tags: ["invoice", "report"],
-    type: "pdf",
-  },
-  {
-    id: 2,
-    filename: "John_ID.jpg",
-    icon: "bi-file-earmark-person",
-    category: "Personal",
-    subCategory: "John",
-    dateAdded: "2025-10-18",
-    tags: ["invoice", "report", "ID"],
-    type: "image",
-  },
-  {
-    id: 3,
-    filename: "Q3-Photo.jpg",
-    icon: "bi-file-earmark-image",
-    category: "Professional",
-    subCategory: "IT",
-    dateAdded: "2025-10-15",
-    tags: ["report"],
-    type: "image",
-  },
-  {
-    id: 4,
-    filename: "TeamPhoto.jpg",
-    icon: "bi-file-earmark-image",
-    category: "Professional",
-    subCategory: "HR",
-    dateAdded: "2025-10-10",
-    tags: ["invoice", "report"],
-    type: "image",
-  },
-];
+import { useNavigate } from "react-router-dom";
 
 const TagChip = ({ tag }) => (
   <span
@@ -64,25 +22,173 @@ const TagChip = ({ tag }) => (
 export default function SearchPage() {
   const [category, setCategory] = useState("All");
   const [subCategory, setSubCategory] = useState("");
-  const [tagsInput, setTagsInput] = useState("Q3-2023");
+  const [tagsInput, setTagsInput] = useState("");
+  const [availableTags, setAvailableTags] = useState([]);
   const [fromDate, setFromDate] = useState(null);
   const [toDate, setToDate] = useState(null);
   const [results, setResults] = useState([]);
   const [initialLoad, setInitialLoad] = useState(true);
   const [previewFile, setPreviewFile] = useState(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [showFilters, setShowFilters] = useState(false);
+  const [error, setError] = useState(null);
 
-  const handleSearch = useCallback(() => {
-    console.log("Searching with filters:", {
-      category,
-      subCategory,
-      tagsInput,
-      fromDate,
-      toDate,
-    });
-    setResults(MOCK_SEARCH_RESULTS);
-  }, [category, subCategory, tagsInput, fromDate, toDate]);
+  // Add useNavigate for navigation
 
+  // Add loading state
+  const [isLoading, setIsLoading] = useState(false);
+  // Use navigate for redirection
+  const navigate = useNavigate();
+
+  // Helper to parse tags input using useMemo
+  const parsedTags = React.useMemo(() => {
+    return tagsInput
+      ? tagsInput
+          .split(",")
+          .map((t) => t.trim())
+          .filter((t) => t.length > 0)
+      : [];
+  }, [tagsInput]);
+
+  // Search handler
+  const handleSearch = useCallback(async () => {
+    if (!showFilters) {
+      setShowFilters(true);
+      return;
+    }
+
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      setError("Session expired! Please login again.");
+      navigate("/");
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    // Format dates
+    const formatDate = (date) =>
+      date
+        ? `${String(date.getDate()).padStart(2, "0")}-${String(
+            date.getMonth() + 1
+          ).padStart(2, "0")}-${date.getFullYear()}`
+        : "";
+
+    const payload = {
+      major_head: category === "All" ? "" : category,
+      minor_head: subCategory,
+      from_date: formatDate(fromDate),
+      to_date: formatDate(toDate),
+      tags: parsedTags.map((tag) => ({ tag_name: tag })),
+      uploaded_by: "system",
+      start: 0,
+      length: 50,
+      filterId: "",
+      search: { value: "" },
+    };
+
+    try {
+      const response = await fetch(
+        "https://apis.allsoft.co/api/documentManagement/searchDocumentEntry",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            token: token,
+          },
+          body: JSON.stringify(payload),
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok && result.status === true && Array.isArray(result.data)) {
+        const formattedResults = result.data.map((doc) => ({
+          id: doc.id,
+          filename: doc.file_name,
+          icon: doc.file_name?.toLowerCase().endsWith(".pdf")
+            ? "bi-file-earmark-pdf"
+            : doc.file_name?.toLowerCase().match(/\.(jpg|jpeg|png|gif)$/)
+            ? "bi-file-earmark-image"
+            : "bi-file-earmark",
+          category: doc.major_head,
+          subCategory: doc.minor_head,
+          dateAdded: doc.document_date,
+          tags: doc.tags ? doc.tags.map((t) => t.tag_name) : [],
+          type: doc.file_name?.split(".").pop()?.toLowerCase() || "unknown",
+          file_url: doc.file_url,
+        }));
+        setResults(formattedResults);
+        if (formattedResults.length === 0) {
+          setError("No documents found matching your criteria.");
+        }
+      } else {
+        setResults([]);
+        setError(result.message || "No documents found.");
+      }
+    } catch (err) {
+      console.error("Search Error:", err);
+      setError("Network error while searching documents.");
+      setResults([]);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [
+    showFilters,
+    category,
+    subCategory,
+    fromDate,
+    toDate,
+    parsedTags,
+    navigate,
+  ]);
+
+  // Fetch available tags
+  useEffect(() => {
+    const fetchTags = async () => {
+      const token = localStorage.getItem("authToken");
+      if (!token) return;
+
+      try {
+        const response = await fetch(
+          "https://apis.allsoft.co/api/documentManagement/documentTags",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              token: token,
+            },
+            body: JSON.stringify({ term: "" }),
+          }
+        );
+
+        const result = await response.json();
+
+        if (
+          response.ok &&
+          result.status === true &&
+          Array.isArray(result.data)
+        ) {
+          const formatted = result.data
+            .filter((tag) => tag.label && tag.label.trim() !== "")
+            .map((tag) => ({
+              id: tag.id,
+              label: tag.label,
+            }));
+          setAvailableTags(formatted);
+        } else {
+          setAvailableTags([]);
+        }
+      } catch (err) {
+        console.error("Tag fetch error:", err);
+      }
+    };
+
+    fetchTags();
+  }, []);
+
+  // Initial load effect
   useEffect(() => {
     if (initialLoad) {
       handleSearch();
@@ -97,6 +203,8 @@ export default function SearchPage() {
     setFromDate(null);
     setToDate(null);
     setResults([]);
+    setError(null);
+    setShowFilters(false);
   };
 
   const handlePreview = (item) => {
@@ -164,19 +272,36 @@ export default function SearchPage() {
 
           <div className="col-md-3">
             <label className="form-label text-muted">Tags</label>
-            <input
-              type="text"
-              className="form-control"
-              placeholder="Enter tags separated by comma"
-              value={tagsInput}
-              onChange={(e) => setTagsInput(e.target.value)}
-            />
+            <select
+              multiple
+              className="form-select"
+              value={tagsInput
+                .split(",")
+                .map((t) => t.trim())
+                .filter((t) => t)}
+              onChange={(e) => {
+                const selectedTags = Array.from(
+                  e.target.selectedOptions,
+                  (opt) => opt.value
+                );
+                setTagsInput(selectedTags.join(", "));
+              }}
+            >
+              {availableTags.length > 0 ? (
+                availableTags.map((tagObj) => (
+                  <option key={tagObj.id} value={tagObj.label}>
+                    {tagObj.label}
+                  </option>
+                ))
+              ) : (
+                <option disabled>Loading tags...</option>
+              )}
+            </select>
 
             <div className="mt-1">
-              {tagsInput &&
-                tagsInput
-                  .split(",")
-                  .map((tag) => <TagChip key={tag.trim()} tag={tag.trim()} />)}
+              {parsedTags.map((tag) => (
+                <TagChip key={tag} tag={tag} />
+              ))}
             </div>
           </div>
 
@@ -206,12 +331,25 @@ export default function SearchPage() {
             <button
               className="btn btn-primary w-100 py-2 me-2"
               onClick={handleSearch}
+              disabled={isLoading}
             >
-              Search
+              {isLoading ? (
+                <>
+                  <span
+                    className="spinner-border spinner-border-sm me-2"
+                    role="status"
+                    aria-hidden="true"
+                  ></span>
+                  Searching...
+                </>
+              ) : (
+                "Search"
+              )}
             </button>
             <button
               className="btn btn-outline-secondary w-100 py-2"
               onClick={handleClear}
+              disabled={isLoading}
             >
               Clear
             </button>
@@ -242,6 +380,13 @@ export default function SearchPage() {
           Search Results ({results.length})
         </h3>
 
+        {error && (
+          <div className="alert alert-danger mt-3">
+            <i className="bi bi-exclamation-triangle-fill me-2"></i>
+            {error}
+          </div>
+        )}
+
         {results.length > 0 ? (
           <div className="table-responsive">
             <table className="table table-hover table-light align-middle">
@@ -264,35 +409,55 @@ export default function SearchPage() {
                     <td>{item.category}</td>
                     <td>{item.dateAdded}</td>
                     <td>
-                      {item.tags.map((tag) => (
-                        <TagChip key={tag} tag={tag} />
-                      ))}
+                      {item.tags &&
+                        item.tags.map((tag) => <TagChip key={tag} tag={tag} />)}
                     </td>
                     <td>
-                      <button
-                        className="btn btn-outline-primary btn-sm me-2"
-                        onClick={() => handlePreview(item)}
-                      >
-                        Preview
-                      </button>
-
-                      <button
-                        className="btn btn-success btn-sm"
-                        onClick={() => handleDownload(item.filename)}
-                      >
-                        Download
-                      </button>
+                      {item.file_url ? (
+                        <>
+                          <a
+                            href={item.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-outline-primary btn-sm me-2"
+                          >
+                            Preview
+                          </a>
+                          <a
+                            href={item.file_url}
+                            download
+                            className="btn btn-success btn-sm"
+                          >
+                            Download
+                          </a>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            className="btn btn-outline-primary btn-sm me-2"
+                            onClick={() => handlePreview(item)}
+                          >
+                            Preview
+                          </button>
+                          <button
+                            className="btn btn-success btn-sm"
+                            onClick={() => handleDownload(item.filename)}
+                          >
+                            Download
+                          </button>
+                        </>
+                      )}
                     </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
-        ) : (
+        ) : !error && !isLoading ? (
           <div className="alert alert-info text-center">
             No documents found. Please adjust your search criteria.
           </div>
-        )}
+        ) : null}
 
         <PreviewModal
           isOpen={isPreviewOpen}
