@@ -298,16 +298,26 @@ export default function UploadPage() {
     >
       <div
         className="card shadow-lg p-4"
-        style={{ width: "95%", maxWidth: "800px", borderRadius: "10px" }}
+        style={{ width: "95%", maxWidth: "1200px", borderRadius: "10px" }}
       >
-        <h2 className="fw-bold mb-4" style={{ color: "#343a40" }}>
-          Upload New Document
-        </h2>
+        <div className="flex d-flex justify-content-between align-items-center mb-4">
+          <h2 className="fw-bold mb-4" style={{ color: "#343a40" }}>
+            Upload New Document
+          </h2>
+          <Link to="/search">
+            <button
+              className="btn btn-info py-2 me-2 text-white"
+              style={{ minWidth: "140px" }}
+            >
+              Search
+            </button>
+          </Link>
+        </div>
 
         <form onSubmit={handleSubmit}>
           {/* ---Date / Category / Minor--- */}
           <div className="row g-3 mb-4">
-            <div className="col-md-4">
+            <div className="col-md-2">
               <label className="form-label text-muted">Document Date</label>
               <DatePicker
                 selected={date}
@@ -353,8 +363,6 @@ export default function UploadPage() {
             </div>
           </div>
 
-          {/* ---Tags Dropdown--- */}
-          {/* ---Tags Dropdown--- */}
           <div className="mb-4">
             <label className="form-label text-muted">Tags</label>
             <select
@@ -473,116 +481,6 @@ export default function UploadPage() {
             </button>
           </div>
         </form>
-
-        {/* 🔍 SEARCH SECTION */}
-        <div className="text-end mt-4">
-          <button
-            type="button"
-            className="btn btn-success"
-            onClick={handleSearch}
-            disabled={isLoading}
-          >
-            {isLoading ? "Searching..." : showFilters ? "Run Search" : "Search"}
-          </button>
-        </div>
-
-        {/* 📦 Filters */}
-        {showFilters && (
-          <div className="card p-3 mt-3 shadow-sm">
-            <div className="row g-3 align-items-end">
-              <div className="col-md-4">
-                <label className="form-label text-muted">Tag</label>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Enter tag"
-                  value={searchTag}
-                  onChange={(e) => setSearchTag(e.target.value)}
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="form-label text-muted">Category</label>
-                <select
-                  className="form-select"
-                  value={searchCategory}
-                  onChange={(e) => setSearchCategory(e.target.value)}
-                >
-                  <option value="">Select</option>
-                  <option value="Personal">Personal</option>
-                  <option value="Professional">Professional</option>
-                </select>
-              </div>
-              <div className="col-md-4">
-                <label className="form-label text-muted">Date</label>
-                <DatePicker
-                  selected={searchDate}
-                  onChange={(d) => setSearchDate(d)}
-                  className="form-control"
-                  dateFormat="dd/MM/yyyy"
-                />
-              </div>
-            </div>
-            <div className="text-end mt-3">
-              <button
-                type="button"
-                className="btn btn-outline-secondary"
-                onClick={handleClearFilters}
-              >
-                Clear
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* 📄 Uploaded Documents */}
-        {uploadedDocs.length > 0 && (
-          <div className="mt-5">
-            <h4>Uploaded Documents</h4>
-            <table className="table table-bordered mt-3">
-              <thead className="table-light">
-                <tr>
-                  <th>#</th>
-                  <th>Filename</th>
-                  <th>Category</th>
-                  <th>Minor</th>
-                  <th>Date</th>
-                  <th>Tags</th>
-                  <th>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {uploadedDocs.map((doc, index) => (
-                  <tr key={doc.id || index}>
-                    <td>{index + 1}</td>
-                    <td>{doc.file_name || doc.filename}</td>
-                    <td>{doc.major_head || doc.category}</td>
-                    <td>{doc.minor_head || doc.minor}</td>
-                    <td>{doc.document_date || doc.dateAdded}</td>
-                    <td>
-                      {doc.tags
-                        ? doc.tags.map((t) => t.tag_name).join(", ")
-                        : "-"}
-                    </td>
-                    <td>
-                      {doc.file_url ? (
-                        <a
-                          href={doc.file_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="btn btn-sm btn-outline-primary"
-                        >
-                          View
-                        </a>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
       </div>
     </div>
   );

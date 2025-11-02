@@ -255,9 +255,19 @@ export default function SearchPage() {
         className="card shadow-lg p-4"
         style={{ width: "95%", maxWidth: "1200px", borderRadius: "10px" }}
       >
-        <h2 className="fw-bold mb-4" style={{ color: "#343a40" }}>
-          Find Documents
-        </h2>
+        <div className="flex d-flex justify-content-between align-items-center mb-4">
+          <h2 className="fw-bold mb-4" style={{ color: "#343a40" }}>
+            Find Documents
+          </h2>
+          <Link to="/upload">
+            <button
+              className="btn btn-info py-2 me-2 text-white"
+              style={{ minWidth: "140px" }}
+            >
+              Upload New File
+            </button>
+          </Link>
+        </div>
         <div className="row g-3">
           <div className="col-md-3">
             <label className="form-label text-muted">Category</label>
@@ -269,23 +279,6 @@ export default function SearchPage() {
               <option value="All">All</option>
               <option value="Personal">Personal</option>
               <option value="Professional">Professional</option>
-            </select>
-          </div>
-
-          <div className="col-md-3">
-            <label className="form-label text-muted">Sub-Category</label>
-            <select
-              className="form-select"
-              value={subCategory}
-              onChange={(e) => setSubCategory(e.target.value)}
-              disabled={category === "All"}
-            >
-              <option value="">Select Sub-Category</option>
-              {subCategoryOptions.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
             </select>
           </div>
 
@@ -416,8 +409,8 @@ export default function SearchPage() {
               dateFormat="MM/dd/yyyy"
             />
           </div>
-          {/* To Date */}
-          <div className="col-md-3">
+
+          <div className="col-md-2">
             <label className="form-label text-muted">To Date</label>
             <DatePicker
               selected={toDate}
@@ -453,24 +446,6 @@ export default function SearchPage() {
               disabled={isLoading}
             >
               Clear
-            </button>
-          </div>
-
-          <div className="col-md-4 d-flex justify-content-end align-items-end">
-            <Link to="/upload">
-              <button
-                className="btn btn-info py-2 me-2 text-white"
-                style={{ minWidth: "140px" }}
-              >
-                Upload New File
-              </button>
-            </Link>
-            <button
-              className="btn btn-secondary py-2"
-              onClick={handleDownloadAll}
-              style={{ minWidth: "180px" }}
-            >
-              Download All as ZIP
             </button>
           </div>
         </div>
