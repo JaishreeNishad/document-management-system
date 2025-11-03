@@ -1,6 +1,5 @@
 import React from "react";
 
-// ✅ Define TagChip here
 const TagChip = ({ tag }) => (
   <span
     className="badge rounded-pill text-bg-primary me-1"
@@ -87,7 +86,7 @@ export default function PreviewModal({ isOpen, onClose, file }) {
           overflow: "auto",
           height: "80%",
         }}
-        onClick={(e) => e.stopPropagation()} // prevent closing when clicking inside modal
+        onClick={(e) => e.stopPropagation()}
       >
         <div className="card-header bg-white d-flex justify-content-between align-items-center p-3">
           <h5 className="mb-0 fw-bold text-dark">{file.filename}</h5>
@@ -99,7 +98,6 @@ export default function PreviewModal({ isOpen, onClose, file }) {
         </div>
 
         <div className="card-body p-4">
-          {/* ✅ Show document details */}
           <div className="mb-4">
             <p className="mb-1">
               <strong>Category:</strong> {file.category || "N/A"}
@@ -123,7 +121,6 @@ export default function PreviewModal({ isOpen, onClose, file }) {
             </p>
           </div>
 
-          {/* ✅ File content preview */}
           {previewContent}
         </div>
 
@@ -134,7 +131,7 @@ export default function PreviewModal({ isOpen, onClose, file }) {
             className="btn btn-primary me-2"
             target="_blank"
             rel="noopener noreferrer"
-            onClick={onClose} // close modal after click
+            onClick={onClose}
           >
             <i className="bi bi-download me-2"></i>Download File
           </a>

@@ -16,7 +16,6 @@ export default function AdminUserForm() {
     setIsLoading(true);
     setError(null);
 
-    // Simulate API call
     setTimeout(() => {
       alert(`User Created:\nUsername: ${form.username}`);
       setForm({ username: "", password: "" });
