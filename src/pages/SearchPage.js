@@ -344,7 +344,7 @@ export default function SearchPage() {
             />
           </div>
 
-          <div className="col-md-3">
+          <div className="col-md-2">
             <label className="form-label text-muted">To Date</label>
             <DatePicker
               selected={toDate}
