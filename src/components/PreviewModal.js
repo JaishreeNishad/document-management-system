@@ -68,16 +68,6 @@ export default function PreviewModal({ isOpen, onClose, file }) {
       </div>
     );
 
-  const handleDownload = () => {
-    if (file.file_url) {
-      const link = document.createElement("a");
-      link.href = file.file_url;
-      link.download = file.filename;
-      link.click();
-    }
-    onClose();
-  };
-
   return (
     <div
       className="position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center"
@@ -138,9 +128,17 @@ export default function PreviewModal({ isOpen, onClose, file }) {
         </div>
 
         <div className="card-footer bg-light d-flex justify-content-end p-3">
-          <button className="btn btn-primary me-2" onClick={handleDownload}>
+          <a
+            href={file?.file_url}
+            download={file?.filename || "document"}
+            className="btn btn-primary me-2"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={onClose} // close modal after click
+          >
             <i className="bi bi-download me-2"></i>Download File
-          </button>
+          </a>
+
           <button className="btn btn-outline-secondary" onClick={onClose}>
             Close Preview
           </button>
