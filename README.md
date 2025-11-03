@@ -1,70 +1,85 @@
-# Getting Started with Create React App
+# React
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+# Document Management App
 
-## Available Scripts
+This project is a comprehensive Document Management Application built using React, Bootstrap , and Axios. It is designed for both mobile and web devices and includes features for login/logout, document preview, search, date filtering, and file upload.
 
-In the project directory, you can run:
+## Features
 
-### `npm start`
+- **User Authentication**:
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+  - Login with mobile OTP validation
+  - Secure session management using local storage
+  - Logout functionality
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- **Document Upload**:
 
-### `npm test`
+  - Date Picker for selecting document date
+  - Dropdown for selecting category: _Personal_ or _Professional_
+  - Dynamic second dropdown:
+    - If "Personal" is selected, loads names (e.g., John, Tom, Emily)
+    - If "Professional" is selected, loads departments (e.g., Accounts, HR, IT, Finance)
+  - Tag input field with suggestions and chip style display:
+    - Fetches pre-existing tags from the API
+    - Automatically saves new tags
+  - File upload:
+    - Only allows Image (PNG, JPEG) and PDF file types
+  - Remarks field for additional document information
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- **Document Search & Preview**:
 
-### `npm run build`
+  - Search feature with filters for date range, tags, and uploader
+  - Responsive table layout for search results
+  - Document preview page with PDF and image display capabilities
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- **Responsive Design**:
+  - Built with Bootstrap using responsive design classes, ensuring optimal display on both mobile and desktop environments.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## Technology Stack
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+- **Frontend**: React
+- **Styling**: Bootstrap 5.3.8
+- **HTTP Client**: Axios
+- **Routing**: React Router DOM
 
-### `npm run eject`
+## Installation
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+1. **Clone the repository:**
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+   ```bash
+   git clone  https://github.com/JaishreeNishad/document-management-system.git
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+   cd document-management-system
+   ```
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+2. **Install Dependencies:**
 
-## Learn More
+   ```bash
+   npm install
+   ```
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+3. **Bootstrap Setup:**
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Bootstrap is automatically loaded from npm and imported in `src/index.js`. You don’t need any extra configuration.
 
-### Code Splitting
+4. **Run the Application:**
+   ```bash
+   npm start
+   ```
+   The app will run on `http://localhost:3000` by default.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+## Configuration
 
-### Analyzing the Bundle Size
+- **API Endpoints:**
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+  - **Generate OTP**: `POST https://apis.allsoft.co/api/documentManagement/generateOTP`
+  - **Validate OTP**: `POST https://apis.allsoft.co/api/documentManagement/validateOTP`
+  - **Upload File**: `POST https://apis.allsoft.co/api/documentManagement/saveDocumentEntry`
+  - **Search Document**: `POST https://apis.allsoft.co/api/documentManagement/searchDocumentEntry`
+  - **Document Tags**: `POST https://apis.allsoft.co/api/documentManagement/documentTags`
 
-### Making a Progressive Web App
+- **Authentication Context:**
+  The user token is stored in local storage after OTP validation and accessed via React Context in `src/context/AuthContext.js`.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- **Routing:**
+  The application uses React Router DOM for client-side routing. Routes are defined in `src/App.js` and include login, upload, search, and preview pages.
