@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 
 export default function LoginPage() {
   const [mobile, setMobile] = useState("");
@@ -8,7 +9,6 @@ export default function LoginPage() {
   const [page, setPage] = useState({ name: "login", mobile: "" });
   const navigate = useNavigate();
 
-  // ✅ Handle OTP generation
   const handleSendOtp = async () => {
     if (mobile.length !== 10) {
       setError("Please enter a valid 10-digit mobile number.");
@@ -23,33 +23,41 @@ export default function LoginPage() {
     };
 
     try {
-      // 1. API Call: Generate OTP using native fetch
-      const response = await fetch(
+      const response = await axios.post(
         "https://apis.allsoft.co/api/documentManagement/generateOTP",
+        mobileNumberPayload,
         {
-          method: "POST",
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify(mobileNumberPayload),
         }
       );
 
-      const responseData = await response.json();
-      console.log("Generate OTP API Response:", responseData);
+      console.log("✅ Generate OTP API Response:", response.data);
+
       navigate("/otp", { state: { mobile } });
-    } catch (e) {
-      console.error("Network or Fetch Error:", e);
-      setError(
-        "Could not connect to the API server. Check your network connection."
-      );
+    } catch (error) {
+      console.error("❌ Axios Error:", error);
+
+      if (error.response) {
+        setError(
+          error.response.data?.message ||
+            "Failed to generate OTP. Please try again."
+        );
+      } else if (error.request) {
+        setError(
+          "No response from server. Please check your internet connection."
+        );
+      } else {
+        setError("An unexpected error occurred. Please try again.");
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleMobileChange = (e) => {
-    const value = e.target.value.replace(/\D/g, ""); // only digits
+    const value = e.target.value.replace(/\D/g, "");
     if (value.length <= 10) setMobile(value);
   };
 

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import axios from "axios";
 
 export default function OtpPage() {
   const [otp, setOtp] = useState(new Array(6).fill(""));
@@ -13,7 +14,6 @@ export default function OtpPage() {
   const location = useLocation();
   const { login } = useAuth();
 
-  // ✅ The mobile number passed from previous page
   const mobileNumber = location.state?.mobile;
 
   useEffect(() => {
@@ -42,7 +42,6 @@ export default function OtpPage() {
     }
   };
 
-  // ✅ Validate OTP API Call
   const handleVerify = async () => {
     const finalOtp = otp.join("");
 
@@ -59,35 +58,33 @@ export default function OtpPage() {
     };
 
     try {
-      const response = await fetch(
+      const response = await axios.post(
         "https://apis.allsoft.co/api/documentManagement/validateOTP",
+        payload,
         {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+          headers: { "Content-Type": "application/json" },
         }
       );
 
-      const responseData = await response.json();
-      console.log("Validate OTP API Response:", responseData);
-
-      // ✅ Only navigate if OTP is valid
-      if (response.ok && responseData.status === true) {
-        const token = responseData.data?.token; // ✅ extract token
-        login(token); // ✅ set the token using useAuth
+      if (response.data.status === true) {
+        const token = response.data.data?.token;
+        login(token);
         alert("✅ OTP verified successfully!");
-        navigate("/search", { state: { data: responseData.data } });
+        navigate("/search", { state: { data: response.data.data } });
       } else {
-        // ❌ Show error if invalid OTP or API error
-        setError(responseData.message || "Invalid OTP. Please try again.");
+        setError(response.data.message || "Invalid OTP. Please try again.");
       }
-    } catch (e) {
-      console.error("Network or Fetch Error:", e);
-      setError(
-        "Could not connect to the API server. Please check your network."
-      );
+    } catch (error) {
+      if (error.response) {
+        setError(
+          error.response.data?.message ||
+            "Failed to verify OTP. Please try again."
+        );
+      } else if (error.request) {
+        setError("No response from server. Please check your internet.");
+      } else {
+        setError("An unexpected error occurred.");
+      }
     } finally {
       setIsLoading(false);
     }

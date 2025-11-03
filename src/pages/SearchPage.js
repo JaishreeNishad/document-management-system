@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import PreviewModal from "../components/PreviewModal";
 
@@ -51,18 +52,19 @@ export default function SearchPage() {
     const fetchTags = async () => {
       if (!token) return;
       try {
-        const response = await fetch(
+        const res = await axios.post(
           "https://apis.allsoft.co/api/documentManagement/documentTags",
+          { term: "" },
           {
-            method: "POST",
-            headers: { "Content-Type": "application/json", token },
-            body: JSON.stringify({ term: "" }),
+            headers: {
+              "Content-Type": "application/json",
+              token: token,
+            },
           }
         );
-        const result = await response.json();
-        if (result.status && Array.isArray(result.data)) {
+        if (res.data?.status && Array.isArray(res.data.data)) {
           setAvailableTags(
-            result.data.map((tag) => ({
+            res.data.data.map((tag) => ({
               id: tag.id,
               label: tag.label,
             }))
@@ -107,43 +109,35 @@ export default function SearchPage() {
     };
 
     try {
-      const response = await fetch(
+      const res = await axios.post(
         "https://apis.allsoft.co/api/documentManagement/searchDocumentEntry",
+        payload,
         {
-          method: "POST",
           headers: {
             "Content-Type": "application/json",
-            token,
+            token: token,
           },
-          body: JSON.stringify(payload),
         }
       );
 
-      const result = await response.json();
-      console.log("Search Response:", result);
+      const result = res.data;
 
-      if (response.ok && result.status && Array.isArray(result.data)) {
+      if (result.status && Array.isArray(result.data)) {
         const formatted = result.data.map((doc) => {
           let filename = doc.file_name;
           if (!filename && doc.file_url) {
-            const urlParts = doc.file_url.split("/");
-            filename = urlParts[urlParts.length - 1].split("?")[0];
+            const parts = doc.file_url.split("/");
+            filename = parts[parts.length - 1].split("?")[0];
           }
 
           let formattedDate = "";
           if (doc.document_date) {
-            const dateObj = new Date(doc.document_date);
-            if (!isNaN(dateObj.getTime())) {
-              formattedDate = `${String(dateObj.getDate()).padStart(
-                2,
-                "0"
-              )}/${String(dateObj.getMonth() + 1).padStart(
-                2,
-                "0"
-              )}/${dateObj.getFullYear()}`;
-            } else {
-              formattedDate = doc.document_date;
-            }
+            const d = new Date(doc.document_date);
+            formattedDate = !isNaN(d.getTime())
+              ? `${String(d.getDate()).padStart(2, "0")}/${String(
+                  d.getMonth() + 1
+                ).padStart(2, "0")}/${d.getFullYear()}`
+              : doc.document_date;
           }
 
           return {
@@ -157,22 +151,21 @@ export default function SearchPage() {
             category: doc.major_head,
             subCategory: doc.minor_head,
             dateAdded: formattedDate,
-            tags: doc.tags
-              ? Array.isArray(doc.tags)
-                ? doc.tags.map((t) => t.tag_name || t)
-                : []
+            tags: Array.isArray(doc.tags)
+              ? doc.tags.map((t) => t.tag_name || t)
               : [],
             file_url: doc.file_url,
             type: filename?.split(".").pop()?.toLowerCase() || "unknown",
           };
         });
+
         setResults(formatted);
         if (formatted.length === 0) setError("No documents found.");
       } else {
         setError(result.message || "No documents found.");
       }
     } catch (err) {
-      console.error(err);
+      console.error("Search error:", err);
       setError("Network error while searching documents.");
     } finally {
       setIsLoading(false);
@@ -221,11 +214,8 @@ export default function SearchPage() {
         setTagDropdownOpen(false);
       }
     };
-
     document.addEventListener("mousedown", handleClickOutside);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-    };
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   return (
@@ -265,7 +255,6 @@ export default function SearchPage() {
                 type="button"
                 className="form-control text-start d-flex justify-content-between align-items-center"
                 onClick={() => setTagDropdownOpen((s) => !s)}
-                style={{ minHeight: "38px" }}
               >
                 <div
                   style={{
@@ -297,8 +286,6 @@ export default function SearchPage() {
                     width: "100%",
                     maxHeight: "220px",
                     overflow: "auto",
-                    top: "100%",
-                    left: 0,
                   }}
                 >
                   <input
@@ -331,7 +318,6 @@ export default function SearchPage() {
                       <label
                         key={tag.id}
                         className="form-check d-flex align-items-center mb-1"
-                        style={{ cursor: "pointer" }}
                       >
                         <input
                           type="checkbox"

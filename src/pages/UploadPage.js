@@ -3,6 +3,7 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import axios from "axios";
 
 const TagChip = ({ tag }) => (
   <span
@@ -25,8 +26,8 @@ export default function UploadPage() {
   const [date, setDate] = useState(new Date());
   const [category, setCategory] = useState("");
   const [minor, setMinor] = useState("");
-  const [tagsInput, setTagsInput] = useState(""); // comma separated tags
-  const [availableTags, setAvailableTags] = useState([]); // API tags
+  const [tagsInput, setTagsInput] = useState("");
+  const [availableTags, setAvailableTags] = useState([]);
   const [remarks, setRemarks] = useState("");
   const [file, setFile] = useState(null);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -34,11 +35,9 @@ export default function UploadPage() {
   const [error, setError] = useState(null);
   const [uploadedDocs, setUploadedDocs] = useState([]);
 
-  // Tag dropdown state (SearchPage जैसा)
   const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
   const [tagFilter, setTagFilter] = useState("");
 
-  // Parse comma separated tags
   const parsedTags = React.useMemo(() => {
     return tagsInput
       ? tagsInput
@@ -48,33 +47,28 @@ export default function UploadPage() {
       : [];
   }, [tagsInput]);
 
-  // 🔹 Fetch available document tags from API
   useEffect(() => {
     const fetchTags = async () => {
-      console.log("Fetching tags with token:", token);
       if (!token) return;
+      console.log("Fetching tags with token:", token);
 
       try {
-        const response = await fetch(
+        const response = await axios.post(
           "https://apis.allsoft.co/api/documentManagement/documentTags",
+          { term: "" },
           {
-            method: "POST",
             headers: {
               "Content-Type": "application/json",
               token: token,
             },
-            body: JSON.stringify({ term: "" }),
           }
         );
 
-        const result = await response.json();
-
         if (
-          response.ok &&
-          result.status === true &&
-          Array.isArray(result.data)
+          response.data.status === true &&
+          Array.isArray(response.data.data)
         ) {
-          const formatted = result.data
+          const formatted = response.data.data
             .filter((tag) => tag.label && tag.label.trim() !== "")
             .map((tag) => ({
               id: tag.id,
@@ -85,14 +79,13 @@ export default function UploadPage() {
           setAvailableTags([]);
         }
       } catch (err) {
-        console.error("Tag fetch error:", err);
+        console.error("❌ Tag fetch error:", err);
       }
     };
 
     fetchTags();
   }, [token]);
 
-  // Tag selection functions (SearchPage जैसा)
   const toggleTag = (label) => {
     const current = parsedTags;
     const next = current.includes(label)
@@ -148,7 +141,6 @@ export default function UploadPage() {
     }
   };
 
-  // 🔹UPLOAD FILE
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -186,30 +178,31 @@ export default function UploadPage() {
 
       formData.append("data", JSON.stringify(dataPayload));
 
-      const response = await fetch(
+      const response = await axios.post(
         "https://apis.allsoft.co/api/documentManagement/saveDocumentEntry",
+        formData,
         {
-          method: "POST",
           headers: {
             token: token,
+            "Content-Type": "multipart/form-data",
           },
-          body: formData,
         }
       );
 
-      const result = await response.json();
+      console.log("✅ Upload Response:", response.data);
 
-      if (response.ok && result.status === true) {
+      if (response.data.status === true) {
         alert("✅ File uploaded successfully!");
+        navigate("/search");
 
         const newDoc = {
-          id: result.data?.id || Date.now(),
+          id: response.data.data?.id || Date.now(),
           filename: file.name,
           category: category || "General",
           minor: minor || "Misc",
           dateAdded: dataPayload.document_date,
           tags: parsedTags.map((t) => ({ tag_name: t })),
-          file_url: result.data?.file_url || "",
+          file_url: response.data.data?.file_url || "",
         };
 
         setUploadedDocs([newDoc, ...uploadedDocs]);
@@ -217,11 +210,20 @@ export default function UploadPage() {
         setRemarks("");
         setTagsInput("");
       } else {
-        setError(result.message || "Failed to upload document.");
+        setError(response.data.message || "Failed to upload document.");
       }
     } catch (err) {
-      console.error("Upload Error:", err);
-      setError("Network error: Unable to upload file.");
+      console.error("❌ Upload Error:", err);
+
+      if (err.response) {
+        setError(
+          err.response.data?.message || "Upload failed. Please try again."
+        );
+      } else if (err.request) {
+        setError("No response from server. Check your internet connection.");
+      } else {
+        setError("An unexpected error occurred during upload.");
+      }
     } finally {
       setIsLoading(false);
     }
@@ -251,7 +253,6 @@ export default function UploadPage() {
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* ---Date / Category / Minor--- */}
           <div className="row g-3 mb-4">
             <div className="col-md-4">
               <label className="form-label text-muted">Category</label>
@@ -304,7 +305,6 @@ export default function UploadPage() {
             </div>
           </div>
 
-          {/* ---TAGS DROPDOWN (SearchPage जैसा)--- */}
           <div className="mb-4">
             <label className="form-label text-muted">Tags</label>
             <div className="position-relative">
@@ -392,7 +392,6 @@ export default function UploadPage() {
             </div>
           </div>
 
-          {/* ---Remarks--- */}
           <div className="mb-4">
             <label className="form-label text-muted">Remarks</label>
             <textarea
@@ -403,7 +402,6 @@ export default function UploadPage() {
             />
           </div>
 
-          {/* ---File Upload--- */}
           <div className="mb-4">
             <label className="form-label text-muted">
               File Upload (Image/PDF only)
@@ -462,7 +460,7 @@ export default function UploadPage() {
           {error && <div className="alert alert-danger">{error}</div>}
 
           <div className="d-flex justify-content-end mt-4">
-            <Link to="/search">
+            <Link to="/upload">
               <button type="button" className="btn btn-outline-secondary me-2">
                 Cancel
               </button>
